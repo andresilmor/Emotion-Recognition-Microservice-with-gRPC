@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+//This tells gRPC we have an InferenceServer service with an inference function, notice that we need to specify the type of the messages: InferenceRequest and InferenceReply
+
+// "repeated" means list of
+
+//Request message containing image
+message EmotionRecognitionRequest {
+    bytes image = 1;
+    map<string, int32> personBox = 2;
+
+}
+
+//Response Message 
+message EmotionRecognitionInferenceReply {
+    map<string,float> continuous = 1;
+    repeated string categorical = 2;
+
+}
+
+service EmotionRecognitionServer {
+    rpc inference (EmotionRecognitionRequest) returns (EmotionRecognitionInferenceReply) { }
+}
+

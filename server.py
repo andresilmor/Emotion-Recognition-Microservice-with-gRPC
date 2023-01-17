@@ -1,159 +1,159 @@
-from functools import lru_cache
-import strawberry
-from strawberry.types import Info
-from fastapi import FastAPI, Request
-from strawberry.fastapi import GraphQLRouter
-from strawberry.extensions import AddValidationRules
-from graphql.validation import NoSchemaIntrospectionCustomRule
-import uvicorn
-import socket  
-import time
+# server.py
+# we will use asyncio to run our service
+import asyncio
+import grpc
 
-from app import Query, Mutation, WS_Connections
-from app.services.common.commonResponses import VisibleError, MaskErrors, ErrorMessage
-from fastapi.logger import logger
-from pydantic import BaseSettings
+import cv2
+import numpy as np
 
+import torch
+from torchvision import transforms
+from emotic import Emotic
+
+# from the generated grpc server definition, import the required stuff
+from ms_emotionRecognition_pb2_grpc import EmotionRecognitionServer, add_EmotionRecognitionServerServicer_to_server
+# import the requests and reply types
+from ms_emotionRecognition_pb2 import EmotionRecognitionRequest, EmotionRecognitionInferenceReply
+
+from PIL import Image
 import os
-import sys
-from dotenv import load_dotenv, find_dotenv
-from app.websockets.ws import preloadModels
 
-from app.auth.jwt_handler import decode_jwt
-from logAssist import logRequest
-
-from fastapi.middleware.httpsredirect import HTTPSRedirectMiddleware
-
-import utils.modelsStorage
-
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-from cryptography.hazmat.primitives.serialization import Encoding, NoEncryption, PrivateFormat, PublicFormat
-
-#private_key = Ed25519PrivateKey.generate()
-#print(private_key.private_bytes(encoding=Encoding.PEM, format=PrivateFormat.PKCS8, encryption_algorithm=NoEncryption()))
-#print(private_key.public_key().public_bytes(encoding=Encoding.PEM, format=PublicFormat.SubjectPublicKeyInfo))
-
-env_loc = find_dotenv('.env')
-load_dotenv(env_loc)
-
-# ---------------------------------------------------------------------------------------------------------------- #
-
-# --------------------------------------------      NGROK     ---------------------------------------------------- #   
-'''
-class Settings(BaseSettings):
-    # ... The rest of our FastAPI settings
-
-    BASE_URL = "http://localhost:8000"
-    USE_NGROK = os.environ.get('USE_NGROK')
+import logging
 
 
-settings = Settings()
+logging.basicConfig(level=logging.INFO)
 
-
-def init_webhooks(base_url):
-    # Update inbound traffic via APIs to use the public-facing ngrok URL
-    pass
-'''    
-
-app = FastAPI(debug=os.environ.get('DEVELOPMENT'),
-              title=os.environ.get('APP_NAME'),
-              description='...',
-              version=0.1,
-              docs_url='/docs')
-              #redoc_url='/redoc')
-
-'''
-print("=> "+ settings.USE_NGROK)
-if settings.USE_NGROK:
-    # pyngrok should only ever be installed or initialized in a dev environment when this flag is set
-    from pyngrok import ngrok
-
-    # Get the dev server port (defaults to 8000 for Uvicorn, can be overridden with `--port`
-    # when starting the server
-    port = sys.argv[sys.argv.index("--port") + 1] if "--port" in sys.argv else 8000
-
-    # Open a ngrok tunnel to the dev server
-    public_url = ngrok.connect(port).public_url
-    logger.info("ngrok tunnel \"{}\" -> \"http://127.0.0.1:{}\"".format(public_url, port))
-
-    # Update any base URLs or webhooks to use the public ngrok URL
-    settings.BASE_URL = public_url
-    init_webhooks(public_url)
-
-'''
-# ---------------------------------------------------------------------------------------------------------------- #
-
-# --------------------------------------------    Startup     ---------------------------------------------------- #   
-
-
-#yoloModel, model_context, model_body, emotic_model = None
-
-@app.on_event("startup")
-async def startup_event():
-    """
-    Initialize FastAPI and add variables
-    """
-
-    utils.modelsStorage.init()
-
-    utils.modelsStorage.models = preloadModels()
-
-    hostname=socket.gethostname()   
-    IPAddr=socket.gethostbyname(hostname) 
-
-    print("***\n" + app.title + "\n***")
-
-    print(">>> Hello There")
-    print(">>> General " + IPAddr)
-    
-    
-# ---------------------------------------------------------------------------------------------------------------- #
-
-# --------------------------------------------   Middleware   ---------------------------------------------------- #   
- 
-if (os.environ.get('DEVELOPMENT') is False):
-    app.add_middleware(HTTPSRedirectMiddleware)
-
-@app.middleware("http")
-async def request_middleware(request: Request, call_next):
-    await logRequest(request.client.host, request.client.port)
-    start_time = time.time()
-    response = await call_next(request)
-    process_time = time.time() - start_time
-    response.headers["X-Process-Time"] = str(process_time)
-    return response
-
-# ---------------------------------------------------------------------------------------------------------------- #
-
-# ---------------------------------------------   GraphQL   ------------------------------------------------------- #   
-
-schema = strawberry.Schema(
-    query=Query,
-    mutation=Mutation,
-    extensions=[
-        AddValidationRules([NoSchemaIntrospectionCustomRule]),
+class EmotionRecognitionService(EmotionRecognitionServer):
+    async def processImagesForEmotic(self, context_norm, body_norm, npimg, image_context=None, image_body=None, bbox=None):
+        ''' Prepare context and body image. 
+        :param context_norm: List containing mean and std values for context images. 
+        :param body_norm: List containing mean and std values for body images. 
+        :param image_context_path: Path of the context image. 
+        :param image_context: Numpy array of the context image.
+        :param image_body: Numpy array of the body image. 
+        :param bbox: List to specify the bounding box to generate the body image. bbox = [x1, y1, x2, y2].
+        :return: Transformed image_context tensor and image_body tensor.
+        '''
         
-    ])
+        image_context = npimg[...,::-1].copy()
 
-app.include_router(GraphQLRouter(schema), prefix="/api")
+        if bbox is not None:
+            image_body = image_context[bbox[1]:bbox[3],bbox[0]:bbox[2]].copy()
+        
+    
+        image_context = cv2.resize(image_context, (224,224))
+        image_body = cv2.resize(image_body, (128,128))
+    
+        
+        test_transform = transforms.Compose([transforms.ToPILImage(),transforms.ToTensor()])
+        context_norm = transforms.Normalize(context_norm[0], context_norm[1])  
+        body_norm = transforms.Normalize(body_norm[0], body_norm[1])
 
-# ---------------------------------------------------------------------------------------------------------------- #
+        image_context = context_norm(test_transform(image_context)).unsqueeze(0)
+        image_body = body_norm(test_transform(image_body)).unsqueeze(0)
 
-# --------------------------------------------   WebSockets   ---------------------------------------------------- #   
-
-app.include_router(WS_Connections.router, prefix='/ws')
-
-# ---------------------------------------------------------------------------------------------------------------- #   
-
-from app.auth.jwt_handler import decode_jwt
-
-@app.get("/validate")
-async def validate_token(request:Request):
-    return {"isValid" : await decode_jwt(request.headers["Authorization"])}
+        return image_context, image_body 
 
 
+    async def inference(self, request: EmotionRecognitionRequest, context) -> EmotionRecognitionInferenceReply:
+        npimg = cv2.imdecode(np.frombuffer(request.image, np.uint8), -1)
+        
+        thresholds_path = "thresholds"
+        model_path = "models/emotic"
+    
+        cat = ['Affection', 'Anger', 'Annoyance', 'Anticipation', 'Aversion', 'Confidence', 'Disapproval', 'Disconnection', \
+            'Disquietment', 'Doubt/Confusion', 'Embarrassment', 'Engagement', 'Esteem', 'Excitement', 'Fatigue', 'Fear','Happiness', \
+            'Pain', 'Peace', 'Pleasure', 'Sadness', 'Sensitivity', 'Suffering', 'Surprise', 'Sympathy', 'Yearning']
+        cat2ind = {}
+        ind2cat = {}
+
+        for idx, emotion in enumerate(cat):
+            cat2ind[emotion] = idx
+            ind2cat[idx] = emotion
+
+        vad = ['Valence', 'Arousal', 'Dominance']
+        ind2vad = {}
+        for idx, continuous in enumerate(vad):
+            ind2vad[idx] = continuous
+
+        context_mean = [0.4690646, 0.4407227, 0.40508908]
+        context_std = [0.2514227, 0.24312855, 0.24266963]
+        body_mean = [0.43832874, 0.3964344, 0.3706214]
+        body_std = [0.24784276, 0.23621225, 0.2323653]
+        context_norm = [context_mean, context_std]
+        body_norm = [body_mean, body_std]
+
+        device = torch.device("cuda:%s" %(str(0)) if torch.cuda.is_available() else "cpu")
+        thresholds = torch.FloatTensor(np.load(os.path.join(thresholds_path, 'emotic_thresholds.npy'))).to(device) 
+    
+        model_context = torch.load(os.path.join(model_path,'model_context1.pth')).to(device)
+        model_body = torch.load(os.path.join(model_path,'model_body1.pth')).to(device)
+        #emotic_model = torch.load(os.path.join(model_path,'model_emotic1.pth')).to(device)
+        emotic_state_dict = torch.load(os.path.join(model_path,'model_emotic1.pt'))
+
+
+        #https://github.com/pytorch/pytorch/issues/7812
+        #https://pytorch.org/docs/master/notes/serialization.html
+
+        emotic_model = Emotic(2048,2048)
+        #emotic_model = Emotic(512,512)
+        emotic_model.load_state_dict(emotic_state_dict)
+
+        model_context.eval()
+        model_body.eval()
+        emotic_model.eval()
+
+        bbox = [int(request.personBox["x1"]), int(request.personBox["y1"]), int(request.personBox["x2"]), int(request.personBox["y2"])] # x1 y1 x2 y2
+        
+        #im = Image.fromarray(npimg)
+        #im.save(os.getcwd() + "/original.png")
+        #im = Image.fromarray(npimg[request.personBox['y1']:request.personBox['y2'], request.personBox['x1']:request.personBox['x2']])
+        #im.save(os.getcwd() + "/frame.png")
+
+        image_context = None
+        image_body = None
+        image_context, image_body = await self.processImagesForEmotic(context_norm, body_norm, npimg, image_context=image_context, image_body=image_body, bbox=bbox)
+        
+        with torch.no_grad():
+            image_context = image_context.to(device)
+            image_body = image_body.to(device)
+            
+            pred_context = model_context(image_context)
+            pred_body = model_body(image_body)
+            pred_cat, pred_cont = emotic_model(pred_context, pred_body)
+            pred_cat = pred_cat.squeeze(0)
+            pred_cont = pred_cont.squeeze(0).to("cpu").data.numpy()
+
+            bool_cat_pred = torch.gt(pred_cat, thresholds)
+        
+
+        result = {'continuous' : {}, 'categorical' : []}
+
+        for i in range(len(bool_cat_pred)):
+            if bool_cat_pred[i] == True:
+                result['categorical'].append(ind2cat[i])
+
+        pred_cont = 10*pred_cont
+
+        count = 0
+        for continuous in pred_cont:
+            result['continuous'][vad[count]] = continuous # Valence Arousal Dominance
+            count += 1
+
+        return EmotionRecognitionInferenceReply(continuous=result['continuous'], categorical=result['categorical'])
+
+
+      
+
+async def serve():
+    server = grpc.aio.server()
+    add_EmotionRecognitionServerServicer_to_server(EmotionRecognitionService(), server)
+    # using ip v6
+    adddress = "[::]:50055"
+    server.add_insecure_port(adddress)
+    logging.info(f"[📡] Starting server on {adddress}")
+    await server.start()
+    await server.wait_for_termination()
 
 if __name__ == "__main__":
-    # workers = 2 x number_of_cores +1 (num_of_threads_per_core x number_of_cores + 1 )
-    isDev = os.environ.get('DEVELOPMENT') != "False"
-    uvicorn.run("main:app",host= "0.0.0.0", port=8000, log_level="info", reload=isDev, workers=4, use_colors=isDev, access_log=isDev)
+    asyncio.run(serve())
