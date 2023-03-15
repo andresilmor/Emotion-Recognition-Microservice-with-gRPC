@@ -5,7 +5,7 @@ import grpc
 import ms_emotionRecognition_pb2 as ms__emotionRecognition__pb2
 
 
-class EmotionRecognitionServerStub(object):
+class EmotionRecognitionServiceStub(object):
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -14,42 +14,42 @@ class EmotionRecognitionServerStub(object):
         Args:
             channel: A grpc.Channel.
         """
-        self.inference = channel.unary_unary(
-                '/EmotionRecognitionServer/inference',
+        self.Inference = channel.unary_unary(
+                '/emotionRecognition.EmotionRecognitionService/Inference',
                 request_serializer=ms__emotionRecognition__pb2.EmotionRecognitionRequest.SerializeToString,
                 response_deserializer=ms__emotionRecognition__pb2.EmotionRecognitionInferenceReply.FromString,
                 )
 
 
-class EmotionRecognitionServerServicer(object):
+class EmotionRecognitionServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
 
-    def inference(self, request, context):
+    def Inference(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
 
-def add_EmotionRecognitionServerServicer_to_server(servicer, server):
+def add_EmotionRecognitionServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
-            'inference': grpc.unary_unary_rpc_method_handler(
-                    servicer.inference,
+            'Inference': grpc.unary_unary_rpc_method_handler(
+                    servicer.Inference,
                     request_deserializer=ms__emotionRecognition__pb2.EmotionRecognitionRequest.FromString,
                     response_serializer=ms__emotionRecognition__pb2.EmotionRecognitionInferenceReply.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'EmotionRecognitionServer', rpc_method_handlers)
+            'emotionRecognition.EmotionRecognitionService', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
 
 
  # This class is part of an EXPERIMENTAL API.
-class EmotionRecognitionServer(object):
+class EmotionRecognitionService(object):
     """Missing associated documentation comment in .proto file."""
 
     @staticmethod
-    def inference(request,
+    def Inference(request,
             target,
             options=(),
             channel_credentials=None,
@@ -59,7 +59,7 @@ class EmotionRecognitionServer(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/EmotionRecognitionServer/inference',
+        return grpc.experimental.unary_unary(request, target, '/emotionRecognition.EmotionRecognitionService/Inference',
             ms__emotionRecognition__pb2.EmotionRecognitionRequest.SerializeToString,
             ms__emotionRecognition__pb2.EmotionRecognitionInferenceReply.FromString,
             options, channel_credentials,

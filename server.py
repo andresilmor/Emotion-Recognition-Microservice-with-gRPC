@@ -11,7 +11,7 @@ from torchvision import transforms
 from emotic import Emotic
 
 # from the generated grpc server definition, import the required stuff
-from ms_emotionRecognition_pb2_grpc import EmotionRecognitionServer, add_EmotionRecognitionServerServicer_to_server
+from ms_emotionRecognition_pb2_grpc import EmotionRecognitionService, add_EmotionRecognitionServiceServicer_to_server
 # import the requests and reply types
 from ms_emotionRecognition_pb2 import EmotionRecognitionRequest, EmotionRecognitionInferenceReply
 
@@ -19,12 +19,22 @@ from PIL import Image
 import os
 
 import logging
+from time import perf_counter
 
 
 logging.basicConfig(level=logging.INFO)
 
-class EmotionRecognitionService(EmotionRecognitionServer):
-    async def processImagesForEmotic(self, context_norm, body_norm, npimg, image_context=None, image_body=None, bbox=None):
+class EmotionRecognitionService(EmotionRecognitionService):
+
+    def __init__(self) -> None:
+        self.device = torch.device("cuda:%s" %(str(0)) if torch.cuda.is_available() else "cpu")
+        self.model_context = torch.load(os.path.join("models/emotic",'model_context1.pth')).to(self.device)
+        self.model_body = torch.load(os.path.join("models/emotic",'model_body1.pth')).to(self.device)
+        #emotic_model = torch.load(os.path.join(model_path,'model_emotic1.pth')).to(device)
+        self.emotic_state_dict = torch.load(os.path.join("models/emotic",'model_emotic1.pt'))
+        super().__init__()
+
+    async def ProcessImagesForEmotic(self, context_norm, body_norm, npimg, image_context=None, image_body=None, bbox=None):
         ''' Prepare context and body image. 
         :param context_norm: List containing mean and std values for context images. 
         :param body_norm: List containing mean and std values for body images. 
@@ -55,11 +65,14 @@ class EmotionRecognitionService(EmotionRecognitionServer):
         return image_context, image_body 
 
 
-    async def inference(self, request: EmotionRecognitionRequest, context) -> EmotionRecognitionInferenceReply:
+    async def Inference(self, request: EmotionRecognitionRequest, context) -> EmotionRecognitionInferenceReply:
+        start = perf_counter()
+
         npimg = cv2.imdecode(np.frombuffer(request.image, np.uint8), -1)
+
+        #cv2.imwrite(os.getcwd() + "/frame4.png",npimg)
         
         thresholds_path = "thresholds"
-        model_path = "models/emotic"
     
         cat = ['Affection', 'Anger', 'Annoyance', 'Anticipation', 'Aversion', 'Confidence', 'Disapproval', 'Disconnection', \
             'Disquietment', 'Doubt/Confusion', 'Embarrassment', 'Engagement', 'Esteem', 'Excitement', 'Fatigue', 'Fear','Happiness', \
@@ -83,14 +96,20 @@ class EmotionRecognitionService(EmotionRecognitionServer):
         context_norm = [context_mean, context_std]
         body_norm = [body_mean, body_std]
 
-        device = torch.device("cuda:%s" %(str(0)) if torch.cuda.is_available() else "cpu")
-        thresholds = torch.FloatTensor(np.load(os.path.join(thresholds_path, 'emotic_thresholds.npy'))).to(device) 
+        
+        thresholds = torch.FloatTensor(np.load(os.path.join(thresholds_path, 'emotic_thresholds.npy'))).to(self.device) 
     
+        '''
         model_context = torch.load(os.path.join(model_path,'model_context1.pth')).to(device)
         model_body = torch.load(os.path.join(model_path,'model_body1.pth')).to(device)
         #emotic_model = torch.load(os.path.join(model_path,'model_emotic1.pth')).to(device)
         emotic_state_dict = torch.load(os.path.join(model_path,'model_emotic1.pt'))
+        '''
 
+        model_context = self.model_context
+        model_body = self.model_body
+        #emotic_model = torch.load(os.path.join(model_path,'model_emotic1.pth')).to(device)
+        emotic_state_dict = self.emotic_state_dict
 
         #https://github.com/pytorch/pytorch/issues/7812
         #https://pytorch.org/docs/master/notes/serialization.html
@@ -112,11 +131,11 @@ class EmotionRecognitionService(EmotionRecognitionServer):
 
         image_context = None
         image_body = None
-        image_context, image_body = await self.processImagesForEmotic(context_norm, body_norm, npimg, image_context=image_context, image_body=image_body, bbox=bbox)
+        image_context, image_body = await self.ProcessImagesForEmotic(context_norm, body_norm, npimg, image_context=image_context, image_body=image_body, bbox=bbox)
         
         with torch.no_grad():
-            image_context = image_context.to(device)
-            image_body = image_body.to(device)
+            image_context = image_context.to(self.device)
+            image_body = image_body.to(self.device)
             
             pred_context = model_context(image_context)
             pred_body = model_body(image_body)
@@ -140,6 +159,11 @@ class EmotionRecognitionService(EmotionRecognitionServer):
             result['continuous'][vad[count]] = continuous # Valence Arousal Dominance
             count += 1
 
+        logging.info(
+            f"[✅] In {(perf_counter() - start) * 1000:.2f}ms"
+        )
+
+
         return EmotionRecognitionInferenceReply(continuous=result['continuous'], categorical=result['categorical'])
 
 
@@ -147,7 +171,7 @@ class EmotionRecognitionService(EmotionRecognitionServer):
 
 async def serve():
     server = grpc.aio.server()
-    add_EmotionRecognitionServerServicer_to_server(EmotionRecognitionService(), server)
+    add_EmotionRecognitionServiceServicer_to_server(EmotionRecognitionService(), server)
     # using ip v6
     adddress = "[::]:50055"
     server.add_insecure_port(adddress)

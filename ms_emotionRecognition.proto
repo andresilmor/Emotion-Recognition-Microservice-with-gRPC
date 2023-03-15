@@ -1,5 +1,12 @@
 syntax = "proto3";
 
+package emotionRecognition;
+
+service EmotionRecognitionService {
+    rpc Inference (EmotionRecognitionRequest) returns (EmotionRecognitionInferenceReply) { }
+}
+
+
 //This tells gRPC we have an InferenceServer service with an inference function, notice that we need to specify the type of the messages: InferenceRequest and InferenceReply
 
 // "repeated" means list of
@@ -18,7 +25,4 @@ message EmotionRecognitionInferenceReply {
 
 }
 
-service EmotionRecognitionServer {
-    rpc inference (EmotionRecognitionRequest) returns (EmotionRecognitionInferenceReply) { }
-}
 

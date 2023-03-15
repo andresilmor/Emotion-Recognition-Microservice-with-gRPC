@@ -13,7 +13,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1bms_emotionRecognition.proto\"\x9a\x01\n\x19\x45motionRecognitionRequest\x12\r\n\x05image\x18\x01 \x01(\x0c\x12<\n\tpersonBox\x18\x02 \x03(\x0b\x32).EmotionRecognitionRequest.PersonBoxEntry\x1a\x30\n\x0ePersonBoxEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x05:\x02\x38\x01\"\xb1\x01\n EmotionRecognitionInferenceReply\x12\x45\n\ncontinuous\x18\x01 \x03(\x0b\x32\x31.EmotionRecognitionInferenceReply.ContinuousEntry\x12\x13\n\x0b\x63\x61tegorical\x18\x02 \x03(\t\x1a\x31\n\x0f\x43ontinuousEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x02:\x02\x38\x01\x32h\n\x18\x45motionRecognitionServer\x12L\n\tinference\x12\x1a.EmotionRecognitionRequest\x1a!.EmotionRecognitionInferenceReply\"\x00\x62\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x1bms_emotionRecognition.proto\x12\x12\x65motionRecognition\"\xad\x01\n\x19\x45motionRecognitionRequest\x12\r\n\x05image\x18\x01 \x01(\x0c\x12O\n\tpersonBox\x18\x02 \x03(\x0b\x32<.emotionRecognition.EmotionRecognitionRequest.PersonBoxEntry\x1a\x30\n\x0ePersonBoxEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x05:\x02\x38\x01\"\xc4\x01\n EmotionRecognitionInferenceReply\x12X\n\ncontinuous\x18\x01 \x03(\x0b\x32\x44.emotionRecognition.EmotionRecognitionInferenceReply.ContinuousEntry\x12\x13\n\x0b\x63\x61tegorical\x18\x02 \x03(\t\x1a\x31\n\x0f\x43ontinuousEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x02:\x02\x38\x01\x32\x8f\x01\n\x19\x45motionRecognitionService\x12r\n\tInference\x12-.emotionRecognition.EmotionRecognitionRequest\x1a\x34.emotionRecognition.EmotionRecognitionInferenceReply\"\x00\x62\x06proto3')
 
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, globals())
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'ms_emotionRecognition_pb2', globals())
@@ -24,14 +24,14 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _EMOTIONRECOGNITIONREQUEST_PERSONBOXENTRY._serialized_options = b'8\001'
   _EMOTIONRECOGNITIONINFERENCEREPLY_CONTINUOUSENTRY._options = None
   _EMOTIONRECOGNITIONINFERENCEREPLY_CONTINUOUSENTRY._serialized_options = b'8\001'
-  _EMOTIONRECOGNITIONREQUEST._serialized_start=32
-  _EMOTIONRECOGNITIONREQUEST._serialized_end=186
-  _EMOTIONRECOGNITIONREQUEST_PERSONBOXENTRY._serialized_start=138
-  _EMOTIONRECOGNITIONREQUEST_PERSONBOXENTRY._serialized_end=186
-  _EMOTIONRECOGNITIONINFERENCEREPLY._serialized_start=189
-  _EMOTIONRECOGNITIONINFERENCEREPLY._serialized_end=366
-  _EMOTIONRECOGNITIONINFERENCEREPLY_CONTINUOUSENTRY._serialized_start=317
-  _EMOTIONRECOGNITIONINFERENCEREPLY_CONTINUOUSENTRY._serialized_end=366
-  _EMOTIONRECOGNITIONSERVER._serialized_start=368
-  _EMOTIONRECOGNITIONSERVER._serialized_end=472
+  _EMOTIONRECOGNITIONREQUEST._serialized_start=52
+  _EMOTIONRECOGNITIONREQUEST._serialized_end=225
+  _EMOTIONRECOGNITIONREQUEST_PERSONBOXENTRY._serialized_start=177
+  _EMOTIONRECOGNITIONREQUEST_PERSONBOXENTRY._serialized_end=225
+  _EMOTIONRECOGNITIONINFERENCEREPLY._serialized_start=228
+  _EMOTIONRECOGNITIONINFERENCEREPLY._serialized_end=424
+  _EMOTIONRECOGNITIONINFERENCEREPLY_CONTINUOUSENTRY._serialized_start=375
+  _EMOTIONRECOGNITIONINFERENCEREPLY_CONTINUOUSENTRY._serialized_end=424
+  _EMOTIONRECOGNITIONSERVICE._serialized_start=427
+  _EMOTIONRECOGNITIONSERVICE._serialized_end=570
 # @@protoc_insertion_point(module_scope)
