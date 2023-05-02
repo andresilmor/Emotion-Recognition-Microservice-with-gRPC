@@ -159,6 +159,8 @@ class EmotionRecognitionService(EmotionRecognitionService):
             result['continuous'][vad[count]] = continuous # Valence Arousal Dominance
             count += 1
 
+        print(result)
+
         logging.info(
             f"[✅] In {(perf_counter() - start) * 1000:.2f}ms"
         )
