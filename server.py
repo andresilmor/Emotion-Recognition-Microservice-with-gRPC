@@ -159,8 +159,6 @@ class EmotionRecognitionService(EmotionRecognitionService):
             result['continuous'][vad[count]] = continuous # Valence Arousal Dominance
             count += 1
 
-        print(result)
-
         logging.info(
             f"[✅] In {(perf_counter() - start) * 1000:.2f}ms"
         )
@@ -175,7 +173,7 @@ async def serve():
     server = grpc.aio.server()
     add_EmotionRecognitionServiceServicer_to_server(EmotionRecognitionService(), server)
     # using ip v6
-    adddress = "[::]:50055"
+    adddress = "[::]:50090"
     server.add_insecure_port(adddress)
     logging.info(f"[📡] Starting server on {adddress}")
     await server.start()
